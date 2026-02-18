@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #000;
+  color: #E5E5E5;
+}
+
+@keyframes pulseVoid {
+  0% { background-color: #000000; }
+  50% { background-color: #050510; }
+  100% { background-color: #000000; }
+}
+
+.pulse-void {
+  animation: pulseVoid 18s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.processing {
+  animation: breathe 2s ease-in-out infinite;
+}
