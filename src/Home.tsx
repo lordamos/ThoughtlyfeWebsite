@@ -10,8 +10,11 @@ export default function Home() {
           muted
           loop
           playsInline
+          preload="none"
+          poster="/hero-poster.webp"
           className="absolute inset-0 w-full h-full object-cover z-0"
         >
+          <source src="/hero-bg.webm" type="video/webm" />
           <source src="/hero-bg.mp4" type="video/mp4" />
         </video>
 
