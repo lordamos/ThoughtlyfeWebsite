@@ -3,8 +3,23 @@ import { Link } from "react-router-dom"
 export default function Home() {
   return (
     <>
-      <section className="h-screen flex items-center px-8">
-        <h1 className="font-serif text-7xl font-black leading-[0.95] tracking-tight bg-gradient-to-r from-[#C9A227] via-[#F7E7A9] to-[#D4AF37] bg-clip-text text-transparent">
+      <section className="relative h-screen flex items-center px-8 overflow-hidden">
+        {/* Video Background */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        >
+          <source src="/hero-bg.mp4" type="video/mp4" />
+        </video>
+
+        {/* Dark overlay for text legibility */}
+        <div className="absolute inset-0 bg-black/50 z-[1]" />
+
+        {/* Hero Text */}
+        <h1 className="relative z-[2] font-serif text-7xl font-black leading-[0.95] tracking-tight bg-gradient-to-r from-[#C9A227] via-[#F7E7A9] to-[#D4AF37] bg-clip-text text-transparent">
           Don't Just Be Better.<br/>Be Sumthin3lse.
         </h1>
       </section>
