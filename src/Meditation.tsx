@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -76,11 +76,55 @@ export default function Meditation() {
   const [breathVisible, setBreathVisible] = useState(false)
   const [litLine, setLitLine] = useState<string | null>(null)
   const [started, setStarted] = useState(false)
+  const [muted, setMuted] = useState(false)
 
   const pausedRef = useRef(false)
   const elapsedRef = useRef(0)
+  const mutedRef = useRef(false)
+
+  // Audio refs for each phase
+  const audioRefs = useRef<Record<string, HTMLAudioElement>>({})
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   useParticles(canvasRef, phase)
+
+  /* ── Pre-load audio ── */
+  useEffect(() => {
+    const phases = ["phase1", "phase2", "phase3", "phase4"]
+    phases.forEach(p => {
+      const audio = new Audio(`/audio/${p}.mp3`)
+      audio.preload = "auto"
+      audioRefs.current[p] = audio
+    })
+    return () => {
+      phases.forEach(p => {
+        const a = audioRefs.current[p]
+        if (a) { a.pause(); a.src = "" }
+      })
+    }
+  }, [])
+
+  /* ── Sync muted state to ref and all audios ── */
+  useEffect(() => {
+    mutedRef.current = muted
+    Object.values(audioRefs.current).forEach(a => { a.muted = muted })
+  }, [muted])
+
+  /* ── Play audio for a phase ── */
+  const playPhaseAudio = useCallback((phaseKey: string) => {
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
+    }
+    const audio = audioRefs.current[phaseKey]
+    if (audio) {
+      audio.muted = mutedRef.current
+      audio.currentTime = 0
+      audio.play().catch(() => {/* autoplay policy — user must interact first */})
+      currentAudioRef.current = audio
+    }
+  }, [])
 
   /* ── Stars ── */
   const stars = useRef(
@@ -91,18 +135,16 @@ export default function Meditation() {
       size: Math.random() * 2.5 + 0.5,
       dur: (Math.random() * 5 + 3).toFixed(1),
       delay: (Math.random() * 5).toFixed(1),
-      minOp: (Math.random() * 0.1 + 0.05).toFixed(2),
-      maxOp: (Math.random() * 0.5 + 0.2).toFixed(2),
     }))
   ).current
 
   /* ── Build timeline ── */
-  const buildTimeline = (): TimelineEntry[] => {
+  const buildTimeline = useCallback((): TimelineEntry[] => {
     const tl: TimelineEntry[] = []
     const t = (at: number, fn: () => void) => tl.push({ at, fn })
 
     // Phase 1
-    t(0,   () => { setPhase(1); setBreathVisible(true) })
+    t(0,   () => { setPhase(1); setBreathVisible(true); playPhaseAudio("phase1") })
     t(3,   () => setLitLine("p1-l1"))
     t(6,   () => setLitLine("p1-l2"))
     t(12,  () => setLitLine("p1-l3"))
@@ -114,7 +156,7 @@ export default function Meditation() {
     t(50,  () => setAffirmationVisible(true))
 
     // Phase 2
-    t(60,  () => { setPhase(2); setBreathVisible(false); setLitLine(null) })
+    t(60,  () => { setPhase(2); setBreathVisible(false); setLitLine(null); playPhaseAudio("phase2") })
     t(63,  () => setLitLine("p2-l1"))
     t(68,  () => setLitLine("p2-l2"))
     t(73,  () => setLitLine("p2-l3"))
@@ -125,7 +167,7 @@ export default function Meditation() {
     t(95,  () => setLitLine("p2-l8"))
 
     // Phase 3
-    t(150, () => { setPhase(3); setLitLine(null) })
+    t(150, () => { setPhase(3); setLitLine(null); playPhaseAudio("phase3") })
     t(155, () => setLitLine("p3-l1"))
     t(160, () => setLitLine("p3-l2"))
     t(165, () => setLitLine("p3-l3"))
@@ -134,7 +176,7 @@ export default function Meditation() {
     t(180, () => setLitLine("p3-l6"))
 
     // Phase 4
-    t(240, () => { setPhase(4); setLitLine(null) })
+    t(240, () => { setPhase(4); setLitLine(null); playPhaseAudio("phase4") })
     t(244, () => setLitLine("p4-l1"))
     t(249, () => setLitLine("p4-l2"))
     t(259, () => setLitLine("p4-l3"))
@@ -143,10 +185,17 @@ export default function Meditation() {
     t(279, () => setLitLine("p4-l6"))
 
     // Close
-    t(330, () => { setPhase(5); setLitLine(null) })
+    t(330, () => {
+      setPhase(5)
+      setLitLine(null)
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause()
+        currentAudioRef.current = null
+      }
+    })
 
     return tl
-  }
+  }, [playPhaseAudio])
 
   const timelineRef = useRef<TimelineEntry[]>([])
   const tlIndexRef = useRef(0)
@@ -166,6 +215,7 @@ export default function Meditation() {
     tlIndexRef.current = 0
     setPhase(1)
     setBreathVisible(true)
+    playPhaseAudio("phase1")
   }
 
   /* ── Timer + timeline runner ── */
@@ -188,11 +238,25 @@ export default function Meditation() {
     return () => clearInterval(interval)
   }, [started, phase])
 
-  /* ── Pause sync ── */
-  useEffect(() => { pausedRef.current = paused }, [paused])
+  /* ── Pause/resume audio ── */
+  useEffect(() => {
+    pausedRef.current = paused
+    const audio = currentAudioRef.current
+    if (!audio) return
+    if (paused) {
+      audio.pause()
+    } else {
+      audio.play().catch(() => {})
+    }
+  }, [paused])
 
   /* ── Reset ── */
   const handleReset = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
+      currentAudioRef.current = null
+    }
     setStarted(false)
     setPhase(0)
     setElapsed(0)
@@ -206,6 +270,9 @@ export default function Meditation() {
     timelineRef.current = []
     tlIndexRef.current = 0
   }
+
+  /* ── Toggle mute ── */
+  const toggleMute = () => setMuted(m => !m)
 
   /* ── Helpers ── */
   const totalDuration = 330
@@ -233,6 +300,22 @@ export default function Meditation() {
     5: "radial-gradient(ellipse at center, #1a1030 0%, #0d0618 100%)",
   }
 
+  /* ── Speaker icon SVG ── */
+  const SpeakerOn = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+    </svg>
+  )
+  const SpeakerOff = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <line x1="23" y1="9" x2="17" y2="15"/>
+      <line x1="17" y1="9" x2="23" y2="15"/>
+    </svg>
+  )
+
   return (
     <div
       className="relative min-h-screen overflow-hidden font-serif"
@@ -250,7 +333,7 @@ export default function Meditation() {
               width: `${s.size}px`,
               height: `${s.size}px`,
               animation: `twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
-              opacity: parseFloat(s.minOp),
+              opacity: 0.08,
             }}
           />
         ))}
@@ -259,27 +342,45 @@ export default function Meditation() {
       {/* Particle canvas */}
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
 
-      {/* Controls */}
+      {/* ── Top-left controls ── */}
       {started && phase !== 5 && (
         <div className="fixed top-4 left-6 flex gap-3 z-50">
           <button
             onClick={() => setPaused(p => !p)}
-            className="text-xs tracking-widest uppercase px-4 py-1.5 rounded-full border border-white/15 bg-white/8 text-white/50 hover:bg-white/15 hover:text-white/80 transition-all"
+            className="text-xs tracking-widest uppercase px-4 py-1.5 rounded-full border border-white/15 bg-white/[0.08] text-white/50 hover:bg-white/15 hover:text-white/80 transition-all"
           >
             {paused ? "▶ Resume" : "⏸ Pause"}
           </button>
           <button
             onClick={handleReset}
-            className="text-xs tracking-widest uppercase px-4 py-1.5 rounded-full border border-white/15 bg-white/8 text-white/50 hover:bg-white/15 hover:text-white/80 transition-all"
+            className="text-xs tracking-widest uppercase px-4 py-1.5 rounded-full border border-white/15 bg-white/[0.08] text-white/50 hover:bg-white/15 hover:text-white/80 transition-all"
           >
             ↺ Restart
           </button>
         </div>
       )}
 
+      {/* ── Speaker button (always visible when started) ── */}
+      {started && (
+        <button
+          onClick={toggleMute}
+          title={muted ? "Unmute narration" : "Mute narration"}
+          className={`fixed top-4 right-6 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 ${
+            muted
+              ? "border-red-400/40 bg-red-400/10 text-red-300/70 hover:bg-red-400/20 hover:text-red-200"
+              : "border-yellow-400/40 bg-yellow-400/10 text-yellow-300/80 hover:bg-yellow-400/20 hover:text-yellow-200"
+          }`}
+        >
+          {muted ? <SpeakerOff /> : <SpeakerOn />}
+          <span className="text-[0.65rem] tracking-widest uppercase hidden sm:inline">
+            {muted ? "Muted" : "Audio On"}
+          </span>
+        </button>
+      )}
+
       {/* Timer */}
       {started && phase !== 5 && (
-        <div className="fixed top-4 right-6 text-xs tracking-widest text-white/35 z-50">
+        <div className="fixed top-14 right-6 text-xs tracking-widest text-white/30 z-50">
           {fmtTime(elapsed)}
         </div>
       )}
@@ -334,7 +435,7 @@ export default function Meditation() {
             <p className="text-white/70 tracking-widest uppercase text-sm">Paused</p>
             <button
               onClick={() => setPaused(false)}
-              className="px-8 py-3 rounded-full border border-yellow-400/50 bg-yellow-400/8 text-yellow-200 tracking-widest uppercase text-sm hover:bg-yellow-400/18 transition-all"
+              className="px-8 py-3 rounded-full border border-yellow-400/50 bg-yellow-400/[0.08] text-yellow-200 tracking-widest uppercase text-sm hover:bg-yellow-400/[0.18] transition-all"
             >
               Resume
             </button>
@@ -342,7 +443,9 @@ export default function Meditation() {
         )}
       </AnimatePresence>
 
-      {/* ── INTRO ── */}
+      {/* ══════════════════════════════════════════ */}
+      {/* INTRO                                     */}
+      {/* ══════════════════════════════════════════ */}
       <AnimatePresence>
         {phase === 0 && (
           <motion.div
@@ -371,7 +474,7 @@ export default function Meditation() {
             </p>
             <button
               onClick={handleStart}
-              className="px-10 py-3 rounded-full border border-yellow-400/50 bg-yellow-400/8 text-yellow-200 tracking-[0.2em] uppercase text-sm hover:bg-yellow-400/18 hover:shadow-[0_0_20px_rgba(245,200,66,0.3)] transition-all"
+              className="px-10 py-3 rounded-full border border-yellow-400/50 bg-yellow-400/[0.08] text-yellow-200 tracking-[0.2em] uppercase text-sm hover:bg-yellow-400/[0.18] hover:shadow-[0_0_20px_rgba(245,200,66,0.3)] transition-all"
             >
               Begin Meditation
             </button>
@@ -379,7 +482,9 @@ export default function Meditation() {
         )}
       </AnimatePresence>
 
-      {/* ── PHASE 1: The Cooling of the Lioness ── */}
+      {/* ══════════════════════════════════════════ */}
+      {/* PHASE 1: The Cooling of the Lioness       */}
+      {/* ══════════════════════════════════════════ */}
       <AnimatePresence>
         {phase === 1 && (
           <motion.div
@@ -392,10 +497,8 @@ export default function Meditation() {
           >
             {/* Orb */}
             <div className="relative w-72 h-72 mb-8 flex-shrink-0">
-              {/* Breath ring */}
               <div className="absolute inset-0 rounded-full border-2 border-yellow-400/40"
                    style={{ animation: "breatheRing 8s ease-in-out infinite" }} />
-              {/* Fire orb */}
               <div
                 className="absolute rounded-full"
                 style={{
@@ -413,13 +516,12 @@ export default function Meditation() {
               />
             </div>
 
-            {/* Text */}
             <div className="max-w-xl w-full text-center">
               <p className="text-[0.7rem] tracking-[0.3em] uppercase text-yellow-200/70 mb-1">Phase 1 · 0:00 – 1:00</p>
               <h2 className="text-2xl text-yellow-400 mb-6" style={{ textShadow: "0 0 30px rgba(245,200,66,0.6)" }}>
                 The Cooling of the Lioness
               </h2>
-              <div className="text-base italic leading-loose text-white/90 max-h-[30vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-yellow-400/30">
+              <div className="text-base italic leading-loose text-white/90 max-h-[30vh] overflow-y-auto pr-2">
                 {line("p1-l1", "Deanne... find your center.")}
                 {line("p1-l2", "Sit tall, facing West, and let the light of the setting sun touch your skin.")}
                 {line("p1-l3", "Close your eyes. For a moment, feel the heat.")}
@@ -435,7 +537,7 @@ export default function Meditation() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 2 }}
-                    className="mt-5 px-5 py-4 border-l-4 border-yellow-400/60 bg-yellow-400/7 rounded-r-lg text-left text-yellow-200 text-sm leading-relaxed not-italic"
+                    className="mt-5 px-5 py-4 border-l-4 border-yellow-400/60 bg-yellow-400/[0.07] rounded-r-lg text-left text-yellow-200 text-sm leading-relaxed not-italic"
                   >
                     "I am not a predator searching for my cub.<br />
                     I am the Sun that provides the warmth she needs to grow."
@@ -447,7 +549,9 @@ export default function Meditation() {
         )}
       </AnimatePresence>
 
-      {/* ── PHASE 2: The Lavender Shield ── */}
+      {/* ══════════════════════════════════════════ */}
+      {/* PHASE 2: The Lavender Shield              */}
+      {/* ══════════════════════════════════════════ */}
       <AnimatePresence>
         {phase === 2 && (
           <motion.div
@@ -459,7 +563,6 @@ export default function Meditation() {
             className="fixed inset-0 z-10 flex flex-col items-center justify-center px-6 pt-16"
           >
             <div className="relative w-72 h-72 mb-8 flex-shrink-0">
-              {/* Outer shield */}
               <div className="absolute rounded-full"
                    style={{
                      inset: "0",
@@ -468,7 +571,6 @@ export default function Meditation() {
                      boxShadow: "0 0 40px 10px rgba(201,160,220,0.2), inset 0 0 40px rgba(201,160,220,0.1)",
                      animation: "shieldPulse 5s ease-in-out infinite",
                    }} />
-              {/* Inner lavender */}
               <div className="absolute rounded-full"
                    style={{
                      top: "66px", left: "66px", width: "140px", height: "140px",
@@ -477,7 +579,6 @@ export default function Meditation() {
                      filter: "blur(2px)",
                      animation: "pulseGold 4s ease-in-out infinite",
                    }} />
-              {/* Gold ribbon ring */}
               <div className="absolute rounded-full"
                    style={{
                      top: "36px", left: "36px", width: "200px", height: "200px",
@@ -506,7 +607,9 @@ export default function Meditation() {
         )}
       </AnimatePresence>
 
-      {/* ── PHASE 3: The Royal Purple Bridge ── */}
+      {/* ══════════════════════════════════════════ */}
+      {/* PHASE 3: The Royal Purple Bridge          */}
+      {/* ══════════════════════════════════════════ */}
       <AnimatePresence>
         {phase === 3 && (
           <motion.div
@@ -518,7 +621,6 @@ export default function Meditation() {
             className="fixed inset-0 z-10 flex flex-col items-center justify-center px-6 pt-16"
           >
             <div className="relative w-72 h-72 mb-8 flex-shrink-0">
-              {/* Gold left */}
               <div className="absolute rounded-full"
                    style={{
                      top: "76px", left: "0", width: "120px", height: "120px",
@@ -527,7 +629,6 @@ export default function Meditation() {
                      filter: "blur(2px)",
                      animation: "pulseGold 4s ease-in-out infinite",
                    }} />
-              {/* Lavender right */}
               <div className="absolute rounded-full"
                    style={{
                      top: "76px", left: "152px", width: "120px", height: "120px",
@@ -536,7 +637,6 @@ export default function Meditation() {
                      filter: "blur(2px)",
                      animation: "shieldPulse 5s ease-in-out infinite",
                    }} />
-              {/* Bridge line */}
               <div className="absolute"
                    style={{
                      top: "131px", left: "60px", width: "152px", height: "2px",
@@ -544,7 +644,6 @@ export default function Meditation() {
                      opacity: 0.7,
                      animation: "bridgeGlow 3s ease-in-out infinite",
                    }} />
-              {/* Purple bridge orb */}
               <div className="absolute rounded-full"
                    style={{
                      top: "86px", left: "86px", width: "100px", height: "100px",
@@ -580,7 +679,9 @@ export default function Meditation() {
         )}
       </AnimatePresence>
 
-      {/* ── PHASE 4: The Ancestral Anchor ── */}
+      {/* ══════════════════════════════════════════ */}
+      {/* PHASE 4: The Ancestral Anchor             */}
+      {/* ══════════════════════════════════════════ */}
       <AnimatePresence>
         {phase === 4 && (
           <motion.div
@@ -592,14 +693,12 @@ export default function Meditation() {
             className="fixed inset-0 z-10 flex flex-col items-center justify-center px-6 pt-16"
           >
             <div className="relative w-72 h-72 mb-8 flex-shrink-0">
-              {/* Mountain base glow */}
               <div className="absolute rounded-full"
                    style={{
                      top: "140px", left: "16px", width: "240px", height: "120px",
                      background: "radial-gradient(ellipse at 50% 100%, rgba(100,60,180,0.4) 0%, transparent 70%)",
                      animation: "mountainGlow 6s ease-in-out infinite",
                    }} />
-              {/* Ancestor orb */}
               <div className="absolute rounded-full"
                    style={{
                      top: "30px", left: "86px", width: "100px", height: "100px",
@@ -608,14 +707,12 @@ export default function Meditation() {
                      filter: "blur(2px)",
                      animation: "ancestorPulse 5s ease-in-out infinite",
                    }} />
-              {/* Root line */}
               <div className="absolute"
                    style={{
                      top: "130px", left: "135px", width: "2px", height: "70px",
                      background: "linear-gradient(to bottom, rgba(64,192,96,0.6), #f5c842)",
                      animation: "rootGrow 4s ease-in-out infinite",
                    }} />
-              {/* You orb */}
               <div className="absolute rounded-full"
                    style={{
                      top: "160px", left: "96px", width: "80px", height: "80px",
@@ -648,7 +745,9 @@ export default function Meditation() {
         )}
       </AnimatePresence>
 
-      {/* ── CLOSING ── */}
+      {/* ══════════════════════════════════════════ */}
+      {/* CLOSING                                   */}
+      {/* ══════════════════════════════════════════ */}
       <AnimatePresence>
         {phase === 5 && (
           <motion.div
@@ -668,7 +767,7 @@ export default function Meditation() {
                 You are not a predator — you are the Sun.<br />
                 You are not a mountain chasing clouds — you are the mountain that waits for rain.
               </p>
-              <div className="mt-6 p-5 border border-purple-300/30 rounded-xl bg-purple-300/6 text-left text-sm text-white/70 leading-relaxed">
+              <div className="mt-6 p-5 border border-purple-300/30 rounded-xl bg-purple-300/[0.06] text-left text-sm text-white/70 leading-relaxed">
                 <strong className="text-purple-200">A gentle reminder, Deanne:</strong><br />
                 The New File only works if the Old File stops running.<br />
                 Every time you peek, you're Old File Deanne.<br />
@@ -676,7 +775,7 @@ export default function Meditation() {
               </div>
               <button
                 onClick={handleReset}
-                className="mt-8 px-10 py-3 rounded-full border border-purple-300/50 bg-purple-300/8 text-purple-200 tracking-[0.2em] uppercase text-sm hover:bg-purple-300/18 transition-all"
+                className="mt-8 px-10 py-3 rounded-full border border-purple-300/50 bg-purple-300/[0.08] text-purple-200 tracking-[0.2em] uppercase text-sm hover:bg-purple-300/[0.18] transition-all"
               >
                 Meditate Again
               </button>
@@ -688,8 +787,8 @@ export default function Meditation() {
       {/* ── Keyframe styles ── */}
       <style>{`
         @keyframes twinkle {
-          0%, 100% { opacity: var(--min-op, 0.05); }
-          50% { opacity: var(--max-op, 0.4); }
+          0%, 100% { opacity: 0.05; }
+          50% { opacity: 0.4; }
         }
         @keyframes pulseFire {
           0%, 100% { transform: scale(1); opacity: 1; }
