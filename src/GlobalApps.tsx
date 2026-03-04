@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Link, useLocation } from "react-router-dom"
 import { APPS, CATEGORIES, PLATFORMS, type App, type Platform } from "./appsData"
+import GitHubImport, { type ImportedApp } from "./GitHubImport"
 
 // ─── Platform badge colour map ───────────────────────────────────────────────
 const PLATFORM_COLORS: Record<Platform, string> = {
@@ -241,6 +242,12 @@ export default function GlobalApps() {
   const [activeCategory, setActiveCategory] = useState<string>("All")
   const [activePlatform, setActivePlatform] = useState<string>("All")
   const [selectedApp, setSelectedApp] = useState<App | null>(null)
+  const [showImport, setShowImport] = useState(false)
+  const [yourApps, setYourApps] = useState<ImportedApp[]>([])
+
+  function handleImported(app: ImportedApp) {
+    setYourApps((prev) => [app, ...prev])
+  }
 
   const filtered = useMemo(() => {
     return APPS.filter((app) => {
@@ -517,40 +524,95 @@ export default function GlobalApps() {
       {/* ── Your Apps ── */}
       <section id="your-apps" className="bg-[#0a0a14] border-y border-white/10 px-6 py-20">
         <div className="max-w-7xl mx-auto">
-          <p className="font-sans text-xs uppercase tracking-widest text-[#D4AF37] mb-2">Your Apps</p>
-          <h2 className="font-serif text-4xl font-bold text-white mb-4">Your Personal Portfolio</h2>
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
+            <div>
+              <p className="font-sans text-xs uppercase tracking-widest text-[#D4AF37] mb-2">Your Apps</p>
+              <h2 className="font-serif text-4xl font-bold text-white">Your Personal Portfolio</h2>
+            </div>
+            <button
+              onClick={() => setShowImport(true)}
+              className="bg-[#D4AF37] text-black font-sans uppercase tracking-widest text-xs px-6 py-3 rounded-lg hover:bg-[#4B0082] hover:text-white transition-colors duration-200 flex items-center gap-2"
+            >
+              <span className="text-base leading-none">⬆</span> Import from GitHub
+            </button>
+          </div>
           <p className="font-sans text-neutral-400 text-sm leading-relaxed mb-10 max-w-xl">
-            Apps you've built or imported from GitHub will appear here. Connect your GitHub account and import any repo to launch it instantly in the SGA sandbox.
+            Apps you've imported from GitHub are deployed to Vercel and launch live in their own sandbox below.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Placeholder cards */}
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
+
+          {yourApps.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {/* Placeholder cards */}
+              {[1, 2, 3].map((i) => (
+                <button
+                  key={i}
+                  onClick={() => setShowImport(true)}
+                  className="border border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-center hover:border-[#D4AF37]/30 transition-colors duration-300 min-h-[200px] cursor-pointer group"
+                >
+                  <div className="w-12 h-12 rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center group-hover:border-[#D4AF37]/50 transition-colors">
+                    <span className="text-white/30 text-2xl group-hover:text-[#D4AF37]/60 transition-colors">+</span>
+                  </div>
+                  <p className="font-sans text-xs uppercase tracking-widest text-neutral-600 group-hover:text-neutral-400 transition-colors">
+                    {i === 1 ? "Import from GitHub" : i === 2 ? "Deploy & Sandbox" : "Add to SGA"}
+                  </p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {yourApps.map((app) => (
+                <motion.div
+                  key={app.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-4 hover:border-[#D4AF37]/30 transition-colors duration-300"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#C9A227] to-[#D4AF37] flex items-center justify-center font-serif text-black text-lg font-black shrink-0">
+                      {app.initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-serif text-white font-bold truncate">{app.name}</p>
+                      <p className="font-sans text-xs text-neutral-500 mt-0.5">{app.category} · GitHub</p>
+                    </div>
+                  </div>
+                  <p className="font-sans text-sm text-neutral-400 leading-relaxed line-clamp-2">{app.description}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {app.tags.slice(0, 3).map((t) => (
+                      <span key={t} className="text-[9px] font-sans uppercase tracking-wider text-neutral-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">{t}</span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-auto">
+                    <button
+                      onClick={() => setSelectedApp(app as unknown as App)}
+                      className="flex-1 bg-[#D4AF37] text-black font-sans uppercase tracking-widest text-xs py-2.5 rounded-lg hover:bg-[#4B0082] hover:text-white transition-colors"
+                    >
+                      Launch App
+                    </button>
+                    <a
+                      href={app.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="border border-white/20 text-neutral-400 font-sans uppercase tracking-widest text-xs px-3 py-2.5 rounded-lg hover:border-[#D4AF37]/40 hover:text-[#D4AF37] transition-colors"
+                    >
+                      GH
+                    </a>
+                  </div>
+                </motion.div>
+              ))}
+              {/* Add more card */}
+              <button
+                onClick={() => setShowImport(true)}
                 className="border border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-center hover:border-[#D4AF37]/30 transition-colors duration-300 min-h-[200px] cursor-pointer group"
               >
                 <div className="w-12 h-12 rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center group-hover:border-[#D4AF37]/50 transition-colors">
                   <span className="text-white/30 text-2xl group-hover:text-[#D4AF37]/60 transition-colors">+</span>
                 </div>
-                <p className="font-sans text-xs uppercase tracking-widest text-neutral-600 group-hover:text-neutral-400 transition-colors">
-                  {i === 1 ? "Import from GitHub" : i === 2 ? "Add New App" : "Connect Platform"}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-4 mt-8">
-            <a
-              href="https://github.com/lordamos/ThoughtlyfeWebsite"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-[#D4AF37] text-black font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:bg-[#4B0082] hover:text-white transition-colors duration-200"
-            >
-              Import from GitHub
-            </a>
-            <button className="border border-white/20 text-neutral-300 font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:border-[#D4AF37]/60 hover:text-[#D4AF37] transition-colors duration-200">
-              Add Manually
-            </button>
-          </div>
+                <p className="font-sans text-xs uppercase tracking-widest text-neutral-600 group-hover:text-neutral-400 transition-colors">Import Another</p>
+              </button>
+            </motion.div>
+          )}
         </div>
       </section>
 
@@ -563,16 +625,17 @@ export default function GlobalApps() {
             Add your latest creation to the portfolio. Whether it's an AI tool, a productivity app, or a custom solution — showcase it here and launch it instantly from the sandbox.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button className="bg-[#D4AF37] text-black font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:bg-[#4B0082] hover:text-white transition-colors duration-200">
-              Add New App
-            </button>
-            <a
-              href="https://github.com/lordamos/ThoughtlyfeWebsite"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border border-white/20 text-neutral-300 font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:border-[#D4AF37]/60 hover:text-[#D4AF37] transition-colors duration-200"
+            <button
+              onClick={() => setShowImport(true)}
+              className="bg-[#D4AF37] text-black font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:bg-[#4B0082] hover:text-white transition-colors duration-200"
             >
               Import from GitHub
+            </button>
+            <a
+              href="#your-apps"
+              className="border border-white/20 text-neutral-300 font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:border-[#D4AF37]/60 hover:text-[#D4AF37] transition-colors duration-200"
+            >
+              View Your Apps
             </a>
           </div>
         </div>
@@ -597,6 +660,14 @@ export default function GlobalApps() {
 
       {/* ── Sandbox Modal ── */}
       {selectedApp && <SandboxModal app={selectedApp} onClose={() => setSelectedApp(null)} />}
+
+      {/* ── GitHub Import Modal ── */}
+      {showImport && (
+        <GitHubImport
+          onClose={() => setShowImport(false)}
+          onImported={handleImported}
+        />
+      )}
     </div>
   )
 }
