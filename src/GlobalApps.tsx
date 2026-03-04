@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { Link, useLocation } from "react-router-dom"
 import { APPS, CATEGORIES, PLATFORMS, type App, type Platform } from "./appsData"
 
 // ─── Platform badge colour map ───────────────────────────────────────────────
@@ -234,6 +235,8 @@ function HowStep({ num, title, body }: { num: string; title: string; body: strin
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function GlobalApps() {
+  const location = useLocation()
+  const isSGA = location.pathname === "/sga"
   const [search, setSearch] = useState("")
   const [activeCategory, setActiveCategory] = useState<string>("All")
   const [activePlatform, setActivePlatform] = useState<string>("All")
@@ -264,6 +267,29 @@ export default function GlobalApps() {
 
   return (
     <div className="min-h-screen bg-[#07070f] text-white">
+
+      {/* ── SGA Mini Header ── */}
+      <header className="fixed top-0 w-full z-50 bg-[rgba(7,7,15,0.92)] backdrop-blur-[12px] border-b border-[rgba(212,175,55,0.25)]">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <Link to="/" className="font-sans text-[#D4AF37] text-xs uppercase tracking-[0.2em] hover:text-white transition-colors">
+            ← Sumthin3lse
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#C9A227] to-[#D4AF37] flex items-center justify-center">
+              <span className="font-serif text-black text-[10px] font-black">S3</span>
+            </div>
+            <span className="font-serif text-white text-sm font-bold tracking-widest">
+              {isSGA ? "SGA" : "GLOBAL APPS"}
+            </span>
+          </div>
+          <nav className="flex gap-6 font-sans text-[11px] uppercase tracking-widest text-neutral-400">
+            <a href="#portfolio" className="hover:text-[#D4AF37] transition-colors">Apps</a>
+            <a href="#your-apps" className="hover:text-[#D4AF37] transition-colors">Your Apps</a>
+            <a href="https://github.com/lordamos/ThoughtlyfeWebsite" target="_blank" rel="noopener noreferrer" className="hover:text-[#D4AF37] transition-colors">GitHub</a>
+          </nav>
+        </div>
+      </header>
+
       {/* ── Hero ── */}
       <section className="relative overflow-hidden pt-32 pb-24 px-6 text-center">
         {/* Radial glow */}
@@ -295,10 +321,10 @@ export default function GlobalApps() {
           </div>
 
           <h1 className="font-serif text-6xl md:text-7xl font-black tracking-tight bg-gradient-to-r from-[#C9A227] via-[#F7E7A9] to-[#D4AF37] bg-clip-text text-transparent">
-            SUMTHIN3LSE
+            {isSGA ? "SGA" : "SUMTHIN3LSE"}
           </h1>
           <p className="font-sans uppercase tracking-[0.3em] text-neutral-400 mt-2 text-sm">
-            Global Apps
+            {isSGA ? "Sumthin3lse Global Apps" : "Global Apps"}
           </p>
           <p className="font-sans text-lg text-neutral-300 mt-6 max-w-xl mx-auto leading-relaxed">
             A curated portfolio of cutting-edge applications built across the most innovative platforms. Import from GitHub, add from any source, and launch every app live in its own sandbox.
@@ -488,6 +514,46 @@ export default function GlobalApps() {
         </div>
       </section>
 
+      {/* ── Your Apps ── */}
+      <section id="your-apps" className="bg-[#0a0a14] border-y border-white/10 px-6 py-20">
+        <div className="max-w-7xl mx-auto">
+          <p className="font-sans text-xs uppercase tracking-widest text-[#D4AF37] mb-2">Your Apps</p>
+          <h2 className="font-serif text-4xl font-bold text-white mb-4">Your Personal Portfolio</h2>
+          <p className="font-sans text-neutral-400 text-sm leading-relaxed mb-10 max-w-xl">
+            Apps you've built or imported from GitHub will appear here. Connect your GitHub account and import any repo to launch it instantly in the SGA sandbox.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Placeholder cards */}
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="border border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-center hover:border-[#D4AF37]/30 transition-colors duration-300 min-h-[200px] cursor-pointer group"
+              >
+                <div className="w-12 h-12 rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center group-hover:border-[#D4AF37]/50 transition-colors">
+                  <span className="text-white/30 text-2xl group-hover:text-[#D4AF37]/60 transition-colors">+</span>
+                </div>
+                <p className="font-sans text-xs uppercase tracking-widest text-neutral-600 group-hover:text-neutral-400 transition-colors">
+                  {i === 1 ? "Import from GitHub" : i === 2 ? "Add New App" : "Connect Platform"}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-4 mt-8">
+            <a
+              href="https://github.com/lordamos/ThoughtlyfeWebsite"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-[#D4AF37] text-black font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:bg-[#4B0082] hover:text-white transition-colors duration-200"
+            >
+              Import from GitHub
+            </a>
+            <button className="border border-white/20 text-neutral-300 font-sans uppercase tracking-widest text-sm px-8 py-3 rounded-none hover:border-[#D4AF37]/60 hover:text-[#D4AF37] transition-colors duration-200">
+              Add Manually
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ── */}
       <section className="bg-[#0a0a14] border-t border-white/10 px-6 py-24 text-center">
         <div className="max-w-2xl mx-auto">
@@ -514,8 +580,19 @@ export default function GlobalApps() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-white/10 px-6 py-10 text-center">
-        <p className="font-serif text-[#D4AF37] text-lg font-bold mb-1">SUMTHIN3LSE</p>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#C9A227] to-[#D4AF37] flex items-center justify-center">
+            <span className="font-serif text-black text-xs font-black">S3</span>
+          </div>
+          <p className="font-serif text-[#D4AF37] text-lg font-bold">{isSGA ? "SGA — Sumthin3lse Global Apps" : "SUMTHIN3LSE"}</p>
+        </div>
         <p className="font-sans text-xs text-neutral-600 uppercase tracking-widest">Global Apps · Powered by Synthetic Intelligence</p>
+        <div className="flex justify-center gap-6 mt-4">
+          <Link to="/" className="font-sans text-xs text-neutral-600 hover:text-[#D4AF37] transition-colors uppercase tracking-widest">Home</Link>
+          <Link to="/lab" className="font-sans text-xs text-neutral-600 hover:text-[#D4AF37] transition-colors uppercase tracking-widest">Lab</Link>
+          <Link to="/sga" className="font-sans text-xs text-neutral-600 hover:text-[#D4AF37] transition-colors uppercase tracking-widest">SGA</Link>
+          <a href="https://github.com/lordamos/ThoughtlyfeWebsite" target="_blank" rel="noopener noreferrer" className="font-sans text-xs text-neutral-600 hover:text-[#D4AF37] transition-colors uppercase tracking-widest">GitHub</a>
+        </div>
       </footer>
 
       {/* ── Sandbox Modal ── */}

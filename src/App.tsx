@@ -9,7 +9,7 @@ import GlobalApps from "./GlobalApps"
 export default function App() {
   const location = useLocation()
   const isMeditation = location.pathname === "/meditation"
-  const isGlobalApps = location.pathname === "/global-apps"
+  const isGlobalApps = location.pathname === "/global-apps" || location.pathname === "/sga"
   return (
     <>
       <ScrollController />
@@ -19,6 +19,7 @@ export default function App() {
         <Route path="/lab" element={<Lab />} />
         <Route path="/meditation" element={<Meditation />} />
         <Route path="/global-apps" element={<GlobalApps />} />
+        <Route path="/sga" element={<GlobalApps />} />
       </Routes>
     </>
   )
