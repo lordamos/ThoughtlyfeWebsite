@@ -60,6 +60,9 @@ export default function Header() {
           <Link className="uppercase tracking-[0.12em] hover:text-[#D4AF37] hover:tracking-[0.18em] transition-all duration-200" to="/meditation">
             Meditate
           </Link>
+          <Link className="uppercase tracking-[0.12em] hover:text-[#D4AF37] hover:tracking-[0.18em] transition-all duration-200" to="/global-apps">
+            Apps
+          </Link>
         </nav>
       </div>
     </motion.header>
