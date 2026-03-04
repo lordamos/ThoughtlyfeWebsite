@@ -4,7 +4,6 @@
   ],
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@5",
       "maxDuration": 300
     }
   }
