@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        serif: ['"Mate SC"', 'Mate', 'serif'],
-        sans: ['Mate', 'serif'],
+        serif: ['"Josefin Sans"', 'sans-serif'],
+        sans: ['"Josefin Sans"', 'sans-serif'],
       },
     },
   },

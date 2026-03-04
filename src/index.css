@@ -5,11 +5,12 @@
 body {
   background: #000;
   color: #E5E5E5;
-  font-family: 'Mate', serif;
+  font-family: 'Josefin Sans', sans-serif;
+  letter-spacing: 0.04em;
 }
 
 *, *::before, *::after {
-  font-family: 'Mate', serif;
+  font-family: 'Josefin Sans', sans-serif;
 }
 
 @keyframes pulseVoid {
