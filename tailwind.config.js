@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        serif: ['"Playfair Display"', 'serif'],
-        sans: ['Montserrat', 'sans-serif'],
+        serif: ['"Mate SC"', 'Mate', 'serif'],
+        sans: ['Mate', 'serif'],
       },
     },
   },

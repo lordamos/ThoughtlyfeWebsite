@@ -5,6 +5,11 @@
 body {
   background: #000;
   color: #E5E5E5;
+  font-family: 'Mate', serif;
+}
+
+*, *::before, *::after {
+  font-family: 'Mate', serif;
 }
 
 @keyframes pulseVoid {
