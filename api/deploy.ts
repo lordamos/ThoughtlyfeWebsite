@@ -9,7 +9,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node"
  */
 
 const VERCEL_TOKEN = process.env.VERCEL_DEPLOY_TOKEN
-const TEAM_ID = process.env.VERCEL_TEAM_ID || "team_4T7YVcgblKIVKjKDsQdMTlrK"
+const TEAM_ID = process.env.VERCEL_TEAM_ID || "team_lRPH6liIuW9IKydiDcpUPd6B"
 const BASE = "https://api.vercel.com"
 
 async function vercelFetch(path: string, options: RequestInit = {}) {
